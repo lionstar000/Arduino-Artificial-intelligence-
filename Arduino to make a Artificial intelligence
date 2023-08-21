@@ -1,0 +1,53 @@
+#include <Arduino.h>
+#include <TensorFlowLite_ESP32.h>
+#include <tensorflow/lite/experimental/micro/kernels/all_ops_resolver.h>
+#include <tensorflow/lite/experimental/micro/micro_error_reporter.h>
+#include <tensorflow/lite/experimental/micro/micro_interpreter.h>
+#include <tensorflow/lite/schema/schema_generated.h>
+#include <tensorflow/lite/version.h>
+#include "model_data.h"  // Include your trained model's header file
+
+const int inputTensorArenaSize = 2 * 1024;
+uint8_t inputTensorArena[inputTensorArenaSize];
+static uint8_t tensor_arena[15 * 1024];
+
+tflite::ErrorReporter* error_reporter = nullptr;
+const tflite::Model* model = nullptr;
+tflite::MicroInterpreter* interpreter = nullptr;
+TfLiteTensor* input = nullptr;
+
+void setup() {
+  Serial.begin(115200);
+  error_reporter = new tflite::MicroErrorReporter;
+
+  model = tflite::GetModel(model_data);
+  if (model->version() != TFLITE_SCHEMA_VERSION) {
+    error_reporter->Report("Model version does not match Schema");
+    return;
+  }
+
+  static tflite::MicroOpResolver<6> micro_op_resolver;
+  micro_op_resolver.AddBuiltin(tflite::BuiltinOperator_CONV_2D,
+                               tflite::ops::micro::Register_CONV_2D());
+  // Add other required ops to the resolver
+
+  static tflite::MicroInterpreter static_interpreter(
+      model, micro_op_resolver, tensor_arena, sizeof(tensor_arena), error_reporter);
+  interpreter = &static_interpreter;
+
+  interpreter->AllocateTensors();
+
+  input = interpreter->input(0);
+}
+
+void loop() {
+  // Preprocess input data and fill the input tensor
+  // For image classification, you might convert an image to an array of pixel values
+  
+  // Run the inference
+  TfLiteStatus invoke_status = interpreter->Invoke();
+  
+  // Postprocess the output data and interpret the results
+  
+  delay(1000); // Delay before running the next inference
+}
